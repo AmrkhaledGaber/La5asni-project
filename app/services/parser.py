@@ -1,6 +1,7 @@
 import fitz  # PyMuPDF
 import docx
 import tempfile
+
 def extract_text(filename: str, content_bytes: bytes) -> dict:
     with tempfile.NamedTemporaryFile(delete=False, suffix=filename[-4:]) as tmp:
         tmp.write(content_bytes)
@@ -25,11 +26,19 @@ def _parse_pdf(path: str) -> dict:
 
     full_text_str = "\n".join(full_text)
     useful_ratio = useful_lines / len(full_text_str.splitlines()) if full_text_str else 0
-    return {"text": full_text_str, "num_pages": len(doc), "useful_ratio": round(useful_ratio, 2)}
+    return {
+        "text": full_text_str,
+        "num_pages": len(doc),
+        "useful_text_ratio": round(useful_ratio, 2)  # ✅ تم التعديل هنا
+    }
 
 def _parse_docx(path: str) -> dict:
     doc = docx.Document(path)
     lines = [p.text for p in doc.paragraphs if p.text.strip()]
     full_text_str = "\n".join(lines)
     useful_ratio = len(lines) / len(doc.paragraphs) if doc.paragraphs else 0
-    return {"text": full_text_str, "num_pages": 1, "useful_ratio": round(useful_ratio, 2)}
+    return {
+        "text": full_text_str,
+        "num_pages": 1,
+        "useful_text_ratio": round(useful_ratio, 2)  # ✅ وتم التعديل هنا كمان
+    }
