@@ -1,5 +1,6 @@
 import streamlit as st
-import requests
+from app.services.parser import extract_text
+from app.services.analyzer import analyze_document
 
 st.set_page_config(page_title="La5asni - Document Analyzer", layout="centered")
 
@@ -8,43 +9,34 @@ st.markdown("Upload a training document (PDF or Word), and we’ll analyze it us
 
 uploaded_file = st.file_uploader("Choose a PDF or DOCX file", type=["pdf", "docx"])
 
-if uploaded_file is not None:
+if uploaded_file:
     if st.button("🔍 Analyze Document"):
         with st.spinner("Analyzing... Please wait."):
-            files = {"file": (uploaded_file.name, uploaded_file.getvalue())}
             try:
-                response = requests.post("http://127.0.0.1:8000/api/v1/analyze/", files=files)
+                # ✅ Step 1: Extract text and metadata
+                extracted = extract_text(uploaded_file.name, uploaded_file.getvalue())
 
-                if response.status_code == 200:
-                    data = response.json()
-                    st.success("✅ Analysis completed!")
+                # ✅ Step 2: Run analysis
+                result = analyze_document(extracted["text"])
 
-                    # 🔹 Basic Info
-                    st.subheader("📊 File Insights")
-                    st.markdown(f"**Number of Pages:** {data['num_pages']}")
-                    st.markdown(f"**Useful Text Ratio:** {data['useful_text_ratio'] * 100:.1f}%")
-                    st.markdown(f"**Number of Key Points:** {data['num_key_points']}")
+                # ✅ Step 3: Show results
+                st.success("✅ Analysis completed!")
 
-                    # 🔹 Summary
-                    st.subheader("📌 Summary:")
-                    st.write(data["summary"])
+                st.subheader("📊 File Insights")
+                st.markdown(f"**Number of Pages:** {extracted['num_pages']}")
+                st.markdown(f"**Useful Text Ratio:** {extracted['useful_text_ratio'] * 100:.1f}%")
+                st.markdown(f"**Number of Key Points:** {result.num_key_points}")
 
-                    # 🔹 Key Points
-                    st.subheader("✅ Key Learning Points:")
-                    for point in data["key_points"]:
-                        st.markdown(f"- {point}")
+                st.subheader("📌 Summary:")
+                st.write(result.summary)
 
-                    # 🔹 Modules with estimated time
-                    st.subheader("📚 Suggested Training Modules:")
-                    for module, minutes in zip(data["training_modules"], data["estimated_minutes_per_module"]):
-                        st.markdown(f"📘 **{module}** — _⏱ {minutes} mins_")
+                st.subheader("✅ Key Learning Points:")
+                for point in result.key_points:
+                    st.markdown(f"- {point}")
 
-                else:
-                    st.error("❌ Something went wrong while processing the document.")
+                st.subheader("📚 Suggested Training Modules:")
+                for module, minutes in zip(result.training_modules, result.estimated_minutes_per_module):
+                    st.markdown(f"📘 **{module}** — _⏱ {minutes} mins_")
+
             except Exception as e:
-                st.error(f"🚨 Error connecting to the backend: {e}")
-
-# 🔹 Dashboard Section
-st.divider()
-st.header("📂 Past Analyses Dashboard")
-st.caption("(Coming soon) View your previous document uploads and analyses here.")
+                st.error(f"🚨 Error during analysis: {e}")
